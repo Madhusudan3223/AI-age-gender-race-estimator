@@ -1,39 +1,45 @@
 import streamlit as st
 import tensorflow as tf
-import numpy as np
 from PIL import Image
+import numpy as np
 
-# Load the pre-trained Keras model
+# Load the trained model with compile=False to avoid custom object errors
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("age_gender_race_model.keras")
+    model = tf.keras.models.load_model("age_gender_race_model.keras", compile=False)
+    return model
 
 model = load_model()
 
-# Label encodings
-age_labels = list(range(0, 116))
+# Define label mappings
 gender_labels = ["Male", "Female"]
 race_labels = ["White", "Black", "Asian", "Indian", "Others"]
 
-st.title("🧠 Age, Gender & Race Estimator")
-st.write("Upload a clear face image to get predictions.")
+# Image preprocessing
+def preprocess_image(img):
+    img = img.resize((128, 128))
+    img_array = np.array(img).astype("float32") / 255.0
+    return np.expand_dims(img_array, axis=0)
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+# Streamlit UI
+st.title("🧠 AI Age, Gender & Race Estimator")
+st.markdown("Upload a face image and let the AI predict age, gender, and race.")
+
+uploaded_file = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    image = image.resize((64, 64))
-    img_array = np.array(image) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
+    with st.spinner("Predicting..."):
+        input_data = preprocess_image(image)
+        age_pred, gender_pred, race_pred = model.predict(input_data)
 
-    prediction = model.predict(img_array)
+        predicted_age = int(age_pred[0][0])
+        predicted_gender = gender_labels[np.argmax(gender_pred)]
+        predicted_race = race_labels[np.argmax(race_pred)]
 
-    age = int(np.round(prediction[0][0]))
-    gender = gender_labels[np.argmax(prediction[1])]
-    race = race_labels[np.argmax(prediction[2])]
-
-    st.markdown(f"### 🧓 Predicted Age: `{age}`")
-    st.markdown(f"### 🚻 Predicted Gender: `{gender}`")
-    st.markdown(f"### 🌍 Predicted Race: `{race}`")
+    st.subheader("🧾 Prediction Results")
+    st.write(f"**Estimated Age:** {predicted_age}")
+    st.write(f"**Gender:** {predicted_gender}")
+    st.write(f"**Race:** {predicted_race}")
