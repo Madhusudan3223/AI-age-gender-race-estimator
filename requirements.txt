@@ -1,5 +1,4 @@
-├── app.py
-├── age_gender_race_model.keras
-├── requirements.txt
-├── runtime.txt     
-└── README.md
+streamlit
+tensorflow==2.12.0
+opencv-python
+Pillow
